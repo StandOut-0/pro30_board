@@ -41,6 +41,9 @@ public class BoardControllerImpl  implements BoardController{
 	@Autowired
 	private ArticleVO articleVO;
 	
+	
+	///board/listArticles.do로 요청시 인터셉터에서 전달된 뷰네임을 가져와 
+	//articlesList글 정보 조회한것을 가져와 바인딩 후 ModelAndView로 jsp에 전달함.
 	@Override
 	@RequestMapping(value= "/board/listArticles.do", method = {RequestMethod.GET, RequestMethod.POST})
 	public ModelAndView listArticles(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -51,7 +54,7 @@ public class BoardControllerImpl  implements BoardController{
 		return mav;
 		
 	}
-	
+
 	 //한 개 이미지 글쓰기
 	@Override
 	@RequestMapping(value="/board/addNewArticle.do" ,method = RequestMethod.POST)

@@ -2,6 +2,12 @@
 <!DOCTYPE configuration 	PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
 	"http://mybatis.org/dtd/mybatis-3-config.dtd">
 
+<!--typeAliases
+typeAlias type경로 alias별명
+DB 조회 결과를 내가 커스텀한 객체(DAO)로 가져오고 싶은 경우 간편하게 가져올 수 있도록 패키지에 대한 별명을 지정함.
+mapper폴더안의 파일들에서 사용될  자바파일들 
+resultMap id sql문을 담은 select이 resultMap 가져올 형식별명 type typeAliases별명
+result property속성 column데이터  column이름-->
 <configuration>
 	<typeAliases>
 		<typeAlias type="com.myspring.pro30.member.vo.MemberVO"  alias="memberVO" />
