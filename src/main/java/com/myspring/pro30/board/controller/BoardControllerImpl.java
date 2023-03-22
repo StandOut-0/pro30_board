@@ -61,7 +61,11 @@ public class BoardControllerImpl  implements BoardController{
 	@ResponseBody
 	public ResponseEntity addNewArticle(MultipartHttpServletRequest multipartRequest, 
 	HttpServletResponse response) throws Exception {
+		
 		multipartRequest.setCharacterEncoding("utf-8");
+		
+		//글 정보를 저장하기 위한 articleMap
+		//글쓰기창에 입력된 모든 정보를 kye/value로 끝날때까지 저장을 반복함.
 		Map<String,Object> articleMap = new HashMap<String, Object>();
 		Enumeration enu=multipartRequest.getParameterNames();
 		while(enu.hasMoreElements()){
@@ -70,6 +74,7 @@ public class BoardControllerImpl  implements BoardController{
 			articleMap.put(name,value);
 		}
 		
+		//파일이름과 세션에 저장된 id를 가져다 articleMap에 저장.
 		String imageFileName= upload(multipartRequest);
 		HttpSession session = multipartRequest.getSession();
 		MemberVO memberVO = (MemberVO) session.getAttribute("member");
@@ -78,32 +83,42 @@ public class BoardControllerImpl  implements BoardController{
 		articleMap.put("id", id);
 		articleMap.put("imageFileName", imageFileName);
 		
+		
 		String message;
+		//ResponseEntity 
+		//클라이언트에게 적절한 응답을 제공하고, 제너릭타입이기에 유연한 반환타입을 가졌다.
+		//예를 들어 ResponseEntity.notFound().build()는 404를 반환하며 본문데이터를 가지지않음
 		ResponseEntity resEnt=null;
 		HttpHeaders responseHeaders = new HttpHeaders();
 		responseHeaders.add("Content-Type", "text/html; charset=utf-8");
 		try {
+			//저장한 글쓰기 정보를 db에 추가
 			int articleNO = boardService.addNewArticle(articleMap);
+			//만약 파일이 있을경우 임시 폴더 temp폴더에서 articleNO로 명명한 파이려 경로로 옮긴다.
 			if(imageFileName!=null && imageFileName.length()!=0) {
-				File srcFile = new 
-				File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
+				File srcFile = new File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
 				File destDir = new File(ARTICLE_IMAGE_REPO+"\\"+articleNO);
 				FileUtils.moveFileToDirectory(srcFile, destDir,true);
 			}
 	
+			//완료후 추가됨을 안내함.
 			message = "<script>";
 			message += " alert('새글을 추가했습니다.');";
 			message += " location.href='"+multipartRequest.getContextPath()+"/board/listArticles.do'; ";
 			message +=" </script>";
+			
 		    resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
 		}catch(Exception e) {
+			//오류발생시 임시파일 temp파일안의  해당 imageFileName파일을 삭제하고
 			File srcFile = new File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
 			srcFile.delete();
 			
+			//안내함.
 			message = " <script>";
 			message +=" alert('오류가 발생했습니다. 다시 시도해 주세요');');";
 			message +=" location.href='"+multipartRequest.getContextPath()+"/board/articleForm.do'; ";
 			message +=" </script>";
+			
 			resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
 			e.printStackTrace();
 		}
@@ -114,7 +129,9 @@ public class BoardControllerImpl  implements BoardController{
 	//한개의 이미지 보여주기
 	@RequestMapping(value="/board/viewArticle.do" ,method = RequestMethod.GET)
 	public ModelAndView viewArticle(@RequestParam("articleNO") int articleNO,
-                                    HttpServletRequest request, HttpServletResponse response) throws Exception{
+                                    HttpServletRequest request, 
+                                    HttpServletResponse response) throws Exception{
+		//viewName과 articleNO를 가져와 ModelAndView에 할당뒤 리턴.
 		String viewName = (String)request.getAttribute("viewName");
 		articleVO=boardService.viewArticle(articleNO);
 		ModelAndView mav = new ModelAndView();
@@ -310,6 +327,7 @@ public class BoardControllerImpl  implements BoardController{
 		return mav;
 	}
 
+	//upload() imageFileName을 리턴함.
 	//한개 이미지 업로드하기
 	private String upload(MultipartHttpServletRequest multipartRequest) throws Exception{
 		String imageFileName= null;
