@@ -32,12 +32,12 @@
   
 	<!--단일이미지 추가  -->
 	 
-  <insert id="insertNewArticle"  parameterType="java.util.Map">
+<!--   <insert id="insertNewArticle"  parameterType="java.util.Map">
 		<![CDATA[
 			INSERT into t_board(articleNO,  title, content, imageFileName, id)
 			VALUES(#{articleNO},#{title},	#{content}, #{imageFileName},	#{id})
 		]]>      
-	</insert>
+	</insert> -->
 	
   <select id="selectNewArticleNO" resultType="int"  >
 		<![CDATA[
@@ -73,7 +73,7 @@
   </delete>
 
  <!--다중 이미지 추가 SQL문 -->   
-  <!--
+
     <insert id="insertNewArticle"  parameterType="java.util.Map">
     <![CDATA[
       insert into t_board(articleNO, id, title, content, imageFileName)
@@ -89,8 +89,8 @@
       VALUES (#{item.imageFileNO}, #{item.imageFileName}, #{item.articleNO}, sysdate)
     </foreach>
   </insert>
- -->
- 
+
+<!-- 데이터가 없으면 0, 있으면 최댓값을 가져온다. -->
   <select id="selectNewImageFileNO" resultType="int"  >
     <![CDATA[
       SELECT  nvl(max(imageFileNO),0) from t_imageFile		

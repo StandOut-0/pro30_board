@@ -32,351 +32,330 @@ import com.myspring.pro30.board.vo.ArticleVO;
 import com.myspring.pro30.board.vo.ImageVO;
 import com.myspring.pro30.member.vo.MemberVO;
 
-
 @Controller("boardController")
-public class BoardControllerImpl  implements BoardController{
+public class BoardControllerImpl implements BoardController {
 	private static final String ARTICLE_IMAGE_REPO = "C:\\board\\article_image";
 	@Autowired
 	private BoardService boardService;
 	@Autowired
 	private ArticleVO articleVO;
-	
-	
-	///board/listArticles.do로 요청시 인터셉터에서 전달된 뷰네임을 가져와 
-	//articlesList글 정보 조회한것을 가져와 바인딩 후 ModelAndView로 jsp에 전달함.
+
+	/// board/listArticles.do로 요청시 인터셉터에서 전달된 뷰네임을 가져와
+	// articlesList글 정보 조회한것을 가져와 바인딩 후 ModelAndView로 jsp에 전달함.
 	@Override
-	@RequestMapping(value= "/board/listArticles.do", method = {RequestMethod.GET, RequestMethod.POST})
+	@RequestMapping(value = "/board/listArticles.do", method = { RequestMethod.GET, RequestMethod.POST })
 	public ModelAndView listArticles(HttpServletRequest request, HttpServletResponse response) throws Exception {
-		String viewName = (String)request.getAttribute("viewName");
+		String viewName = (String) request.getAttribute("viewName");
 		List articlesList = boardService.listArticles();
 		ModelAndView mav = new ModelAndView(viewName);
 		mav.addObject("articlesList", articlesList);
 		return mav;
-		
+
 	}
 
-	 //한 개 이미지 글쓰기
+	// Form
+	@RequestMapping(value = "/board/*Form.do", method = RequestMethod.GET)
+	private ModelAndView form(HttpServletRequest request, HttpServletResponse response) throws Exception {
+		String viewName = (String) request.getAttribute("viewName");
+		ModelAndView mav = new ModelAndView();
+		mav.setViewName(viewName);
+		return mav;
+	}
+
+	// removeArticle
 	@Override
-	@RequestMapping(value="/board/addNewArticle.do" ,method = RequestMethod.POST)
+	@RequestMapping(value = "/board/removeArticle.do", method = RequestMethod.POST)
 	@ResponseBody
-	public ResponseEntity addNewArticle(MultipartHttpServletRequest multipartRequest, 
-	HttpServletResponse response) throws Exception {
-		
-		multipartRequest.setCharacterEncoding("utf-8");
-		
-		//글 정보를 저장하기 위한 articleMap
-		//글쓰기창에 입력된 모든 정보를 kye/value로 끝날때까지 저장을 반복함.
-		Map<String,Object> articleMap = new HashMap<String, Object>();
-		Enumeration enu=multipartRequest.getParameterNames();
-		while(enu.hasMoreElements()){
-			String name=(String)enu.nextElement();
-			String value=multipartRequest.getParameter(name);
-			articleMap.put(name,value);
-		}
-		
-		//파일이름과 세션에 저장된 id를 가져다 articleMap에 저장.
-		String imageFileName= upload(multipartRequest);
-		HttpSession session = multipartRequest.getSession();
-		MemberVO memberVO = (MemberVO) session.getAttribute("member");
-		String id = memberVO.getId();
-		articleMap.put("parentNO", 0);
-		articleMap.put("id", id);
-		articleMap.put("imageFileName", imageFileName);
-		
-		
+	public ResponseEntity removeArticle(@RequestParam("articleNO") int articleNO, HttpServletRequest request,
+			HttpServletResponse response) throws Exception {
+		response.setContentType("text/html; charset=UTF-8");
 		String message;
-		//ResponseEntity 
-		//클라이언트에게 적절한 응답을 제공하고, 제너릭타입이기에 유연한 반환타입을 가졌다.
-		//예를 들어 ResponseEntity.notFound().build()는 404를 반환하며 본문데이터를 가지지않음
-		ResponseEntity resEnt=null;
+		ResponseEntity resEnt = null;
 		HttpHeaders responseHeaders = new HttpHeaders();
 		responseHeaders.add("Content-Type", "text/html; charset=utf-8");
 		try {
-			//저장한 글쓰기 정보를 db에 추가
-			int articleNO = boardService.addNewArticle(articleMap);
-			//만약 파일이 있을경우 임시 폴더 temp폴더에서 articleNO로 명명한 파이려 경로로 옮긴다.
-			if(imageFileName!=null && imageFileName.length()!=0) {
-				File srcFile = new File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
-				File destDir = new File(ARTICLE_IMAGE_REPO+"\\"+articleNO);
-				FileUtils.moveFileToDirectory(srcFile, destDir,true);
-			}
-	
-			//완료후 추가됨을 안내함.
+			boardService.removeArticle(articleNO);
+			File destDir = new File(ARTICLE_IMAGE_REPO + "\\" + articleNO);
+			FileUtils.deleteDirectory(destDir);
+
 			message = "<script>";
-			message += " alert('새글을 추가했습니다.');";
-			message += " location.href='"+multipartRequest.getContextPath()+"/board/listArticles.do'; ";
-			message +=" </script>";
-			
-		    resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
-		}catch(Exception e) {
-			//오류발생시 임시파일 temp파일안의  해당 imageFileName파일을 삭제하고
-			File srcFile = new File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
-			srcFile.delete();
-			
-			//안내함.
-			message = " <script>";
-			message +=" alert('오류가 발생했습니다. 다시 시도해 주세요');');";
-			message +=" location.href='"+multipartRequest.getContextPath()+"/board/articleForm.do'; ";
-			message +=" </script>";
-			
+			message += " alert('글을 삭제했습니다.');";
+			message += " location.href='" + request.getContextPath() + "/board/listArticles.do';";
+			message += " </script>";
+			resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
+
+		} catch (Exception e) {
+			message = "<script>";
+			message += " alert('작업중 오류가 발생했습니다.다시 시도해 주세요.');";
+			message += " location.href='" + request.getContextPath() + "/board/listArticles.do';";
+			message += " </script>";
 			resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
 			e.printStackTrace();
 		}
 		return resEnt;
 	}
+
+	// =============================================================================================
+
+	// 한 개 이미지 수정 기능
+
+//	@RequestMapping(value = "/board/modArticle.do", method = RequestMethod.POST)
+//	@ResponseBody
+//	public ResponseEntity modArticle(MultipartHttpServletRequest multipartRequest, HttpServletResponse response)
+//			throws Exception {
+//		multipartRequest.setCharacterEncoding("utf-8");
+//		Map<String, Object> articleMap = new HashMap<String, Object>();
+//		Enumeration enu = multipartRequest.getParameterNames();
+//		while (enu.hasMoreElements()) {
+//			String name = (String) enu.nextElement();
+//			String value = multipartRequest.getParameter(name);
+//			articleMap.put(name, value);
+//		}
+//		String imageFileName = upload(multipartRequest);
+//		articleMap.put("imageFileName", imageFileName);
+//
+//		String articleNO = (String) articleMap.get("articleNO");
+//		String message;
+//		ResponseEntity resEnt = null;
+//		HttpHeaders responseHeaders = new HttpHeaders();
+//		responseHeaders.add("Content-Type", "text/html; charset=utf-8");
+//
+//		try {
+//			boardService.modArticle(articleMap);
+//			if (imageFileName != null && imageFileName.length() != 0) {
+//				File srcFile = new File(ARTICLE_IMAGE_REPO + "\\" + "temp" + "\\" + imageFileName);
+//				File destDir = new File(ARTICLE_IMAGE_REPO + "\\" + articleNO);
+//				FileUtils.moveFileToDirectory(srcFile, destDir, true);
+//
+//				// 이전 파일은 삭제
+//				String originalFileName = (String) articleMap.get("originalFileName");
+//				File oldFile = new File(ARTICLE_IMAGE_REPO + "\\" + articleNO + "\\" + originalFileName);
+//				oldFile.delete();
+//			}
+//			message = "<script>";
+//			message += " alert('글을 수정했습니다.');";
+//			message += " location.href='" + multipartRequest.getContextPath() + "/board/viewArticle.do?articleNO="
+//					+ articleNO + "';";
+//			message += " </script>";
+//			resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
+//		} catch (Exception e) {
+//			File srcFile = new File(ARTICLE_IMAGE_REPO + "\\" + "temp" + "\\" + imageFileName);
+//			srcFile.delete();
+//			message = "<script>";
+//			message += " alert('오류가 발생했습니다.다시 수정해주세요');";
+//			message += " location.href='" + multipartRequest.getContextPath() + "/board/viewArticle.do?articleNO="
+//					+ articleNO + "';";
+//			message += " </script>";
+//			resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
+//		}
+//		return resEnt;
+//	}
+
 	
 	
-	//한개의 이미지 보여주기
-	@RequestMapping(value="/board/viewArticle.do" ,method = RequestMethod.GET)
-	public ModelAndView viewArticle(@RequestParam("articleNO") int articleNO,
-                                    HttpServletRequest request, 
-                                    HttpServletResponse response) throws Exception{
-		//viewName과 articleNO를 가져와 ModelAndView에 할당뒤 리턴.
-		String viewName = (String)request.getAttribute("viewName");
-		articleVO=boardService.viewArticle(articleNO);
-		ModelAndView mav = new ModelAndView();
-		mav.setViewName(viewName);
-		mav.addObject("article", articleVO);
-		return mav;
-	}
-	
+	// =============================================================================================
+
+	// 한개의 이미지 보여주기
 	/*
-	//다중 이미지 보여주기
-	@RequestMapping(value="/board/viewArticle.do" ,method = RequestMethod.GET)
-	public ModelAndView viewArticle(@RequestParam("articleNO") int articleNO,
-			  HttpServletRequest request, HttpServletResponse response) throws Exception{
-		String viewName = (String)request.getAttribute("viewName");
-		Map articleMap=boardService.viewArticle(articleNO);
+	 * @RequestMapping(value="/board/viewArticle.do" ,method = RequestMethod.GET)
+	 * public ModelAndView viewArticle(@RequestParam("articleNO") int articleNO,
+	 * HttpServletRequest request, HttpServletResponse response) throws Exception{
+	 * //viewName과 articleNO를 가져와 ModelAndView에 할당뒤 리턴. String viewName =
+	 * (String)request.getAttribute("viewName");
+	 * articleVO=boardService.viewArticle(articleNO); ModelAndView mav = new
+	 * ModelAndView(); mav.setViewName(viewName); mav.addObject("article",
+	 * articleVO); return mav; }
+	 * 
+	 */
+
+	// 다중 이미지 보여주기
+
+	@RequestMapping(value = "/board/viewArticle.do", method = RequestMethod.GET)
+	public ModelAndView viewArticle(@RequestParam("articleNO") int articleNO, HttpServletRequest request,
+			HttpServletResponse response) throws Exception {
+		String viewName = (String) request.getAttribute("viewName");
+		Map articleMap = boardService.viewArticle(articleNO);
 		ModelAndView mav = new ModelAndView();
 		mav.setViewName(viewName);
 		mav.addObject("articleMap", articleMap);
 		return mav;
 	}
-   */
-	
 
-	
-  //한 개 이미지 수정 기능
-  @RequestMapping(value="/board/modArticle.do" ,method = RequestMethod.POST)
-  @ResponseBody
-  public ResponseEntity modArticle(MultipartHttpServletRequest multipartRequest,  
-    HttpServletResponse response) throws Exception{
-	  
-    multipartRequest.setCharacterEncoding("utf-8");
-	Map<String,Object> articleMap = new HashMap<String, Object>();
-	Enumeration enu=multipartRequest.getParameterNames();
-	while(enu.hasMoreElements()){
-		String name=(String)enu.nextElement();
-		String value=multipartRequest.getParameter(name);
-		articleMap.put(name,value);
-	}
-	
-	String imageFileName= upload(multipartRequest);
-	articleMap.put("imageFileName", imageFileName);
-	
-	String articleNO=(String)articleMap.get("articleNO");
-	String message;
-	ResponseEntity resEnt=null;
-	HttpHeaders responseHeaders = new HttpHeaders();
-	responseHeaders.add("Content-Type", "text/html; charset=utf-8");
-	
-    try {
-       boardService.modArticle(articleMap);
-       if(imageFileName!=null && imageFileName.length()!=0) {
-         File srcFile = new File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
-         File destDir = new File(ARTICLE_IMAGE_REPO+"\\"+articleNO);
-         FileUtils.moveFileToDirectory(srcFile, destDir, true);
-         
-         //이전 파일은 삭제
-         String originalFileName = (String)articleMap.get("originalFileName");
-         File oldFile = new File(ARTICLE_IMAGE_REPO+"\\"+articleNO+"\\"+originalFileName);
-         oldFile.delete();
-       }	
-       message = "<script>";
-	   message += " alert('글을 수정했습니다.');";
-	   message += " location.href='"+multipartRequest.getContextPath()+"/board/viewArticle.do?articleNO="+articleNO+"';";
-	   message +=" </script>";
-       resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
-    }catch(Exception e) {
-      File srcFile = new File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
-      srcFile.delete();
-      message = "<script>";
-	  message += " alert('오류가 발생했습니다.다시 수정해주세요');";
-	  message += " location.href='"+multipartRequest.getContextPath()+"/board/viewArticle.do?articleNO="+articleNO+"';";
-	  message +=" </script>";
-      resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
-    }
-    return resEnt;
-  }
-  
-  
-  
-  
-  @Override
-  @RequestMapping(value="/board/removeArticle.do" ,method = RequestMethod.POST)
-  @ResponseBody
-  public ResponseEntity  removeArticle(@RequestParam("articleNO") int articleNO,
-                              HttpServletRequest request, HttpServletResponse response) throws Exception{
-	response.setContentType("text/html; charset=UTF-8");
-	String message;
-	ResponseEntity resEnt=null;
-	HttpHeaders responseHeaders = new HttpHeaders();
-	responseHeaders.add("Content-Type", "text/html; charset=utf-8");
-	try {
-		boardService.removeArticle(articleNO);
-		File destDir = new File(ARTICLE_IMAGE_REPO+"\\"+articleNO);
-		FileUtils.deleteDirectory(destDir);
-		
-		message = "<script>";
-		message += " alert('글을 삭제했습니다.');";
-		message += " location.href='"+request.getContextPath()+"/board/listArticles.do';";
-		message +=" </script>";
-	    resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
-	       
-	}catch(Exception e) {
-		message = "<script>";
-		message += " alert('작업중 오류가 발생했습니다.다시 시도해 주세요.');";
-		message += " location.href='"+request.getContextPath()+"/board/listArticles.do';";
-		message +=" </script>";
-	    resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
-	    e.printStackTrace();
-	}
-	return resEnt;
-  }  
-  
-/*
-  //다중 이미지 글 추가하기
-  @Override
-  @RequestMapping(value="/board/addNewArticle.do" ,method = RequestMethod.POST)
-  @ResponseBody
-  public ResponseEntity  addNewArticle(MultipartHttpServletRequest multipartRequest, HttpServletResponse response) throws Exception {
-	multipartRequest.setCharacterEncoding("utf-8");
-	String imageFileName=null;
-	
-	Map articleMap = new HashMap();
-	Enumeration enu=multipartRequest.getParameterNames();
-	while(enu.hasMoreElements()){
-		String name=(String)enu.nextElement();
-		String value=multipartRequest.getParameter(name);
-		articleMap.put(name,value);
-	}
-	
-	//로그인 시 세션에 저장된 회원 정보에서 글쓴이 아이디를 얻어와서 Map에 저장합니다.
-	HttpSession session = multipartRequest.getSession();
-	MemberVO memberVO = (MemberVO) session.getAttribute("member");
-	String id = memberVO.getId();
-	articleMap.put("id",id);
-	
-	
-	List<String> fileList =upload(multipartRequest);
-	List<ImageVO> imageFileList = new ArrayList<ImageVO>();
-	if(fileList!= null && fileList.size()!=0) {
-		for(String fileName : fileList) {
-			ImageVO imageVO = new ImageVO();
-			imageVO.setImageFileName(fileName);
-			imageFileList.add(imageVO);
-		}
-		articleMap.put("imageFileList", imageFileList);
-	}
-	String message;
-	ResponseEntity resEnt=null;
-	HttpHeaders responseHeaders = new HttpHeaders();
-    responseHeaders.add("Content-Type", "text/html; charset=utf-8");
-	try {
-		int articleNO = boardService.addNewArticle(articleMap);
-		if(imageFileList!=null && imageFileList.size()!=0) {
-			for(ImageVO  imageVO:imageFileList) {
-				imageFileName = imageVO.getImageFileName();
-				File srcFile = new File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
-				File destDir = new File(ARTICLE_IMAGE_REPO+"\\"+articleNO);
-				//destDir.mkdirs();
-				FileUtils.moveFileToDirectory(srcFile, destDir,true);
-			}
-		}
-		    
-		message = "<script>";
-		message += " alert('새글을 추가했습니다.');";
-		message += " location.href='"+multipartRequest.getContextPath()+"/board/listArticles.do'; ";
-		message +=" </script>";
-	    resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
-	    
-		 
-	}catch(Exception e) {
-		if(imageFileList!=null && imageFileList.size()!=0) {
-		  for(ImageVO  imageVO:imageFileList) {
-		  	imageFileName = imageVO.getImageFileName();
-			File srcFile = new File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
-		 	srcFile.delete();
-		  }
-		}
+	// =============================================================================================
 
-		
-		message = " <script>";
-		message +=" alert('오류가 발생했습니다. 다시 시도해 주세요');');";
-		message +=" location.href='"+multipartRequest.getContextPath()+"/board/articleForm.do'; ";
-		message +=" </script>";
-		resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
-		e.printStackTrace();
-	}
-	return resEnt;
-  }
-	
-*/
-
-	
-
-	@RequestMapping(value = "/board/*Form.do", method =  RequestMethod.GET)
-	private ModelAndView form(HttpServletRequest request, HttpServletResponse response) throws Exception {
-		String viewName = (String)request.getAttribute("viewName");
-		ModelAndView mav = new ModelAndView();
-		mav.setViewName(viewName);
-		return mav;
-	}
-
-	//upload() imageFileName을 리턴함.
-	//한개 이미지 업로드하기
-	private String upload(MultipartHttpServletRequest multipartRequest) throws Exception{
-		String imageFileName= null;
-		Iterator<String> fileNames = multipartRequest.getFileNames();
-		
-		while(fileNames.hasNext()){
-			String fileName = fileNames.next();
-			MultipartFile mFile = multipartRequest.getFile(fileName);
-			imageFileName=mFile.getOriginalFilename();
-			File file = new File(ARTICLE_IMAGE_REPO +"\\"+ fileName);
-			if(mFile.getSize()!=0){ //File Null Check
-				if(! file.exists()){ //경로상에 파일이 존재하지 않을 경우
-					if(file.getParentFile().mkdirs()){ //경로에 해당하는 디렉토리들을 생성
-							file.createNewFile(); //이후 파일 생성
-					}
-				}
-				mFile.transferTo(new File(ARTICLE_IMAGE_REPO +"\\"+"temp"+ "\\"+imageFileName)); //임시로 저장된 multipartFile을 실제 파일로 전송
-			}
-		}
-		return imageFileName;
-	}
-	
+	// 한개 addNewArticle
 	/*
-	//다중 이미지 업로드하기
-	private List<String> upload(MultipartHttpServletRequest multipartRequest) throws Exception{
-		List<String> fileList= new ArrayList<String>();
+	 * @Override
+	 * 
+	 * @RequestMapping(value="/board/addNewArticle.do" ,method = RequestMethod.POST)
+	 * 
+	 * @ResponseBody public ResponseEntity addNewArticle(MultipartHttpServletRequest
+	 * multipartRequest, HttpServletResponse response) throws Exception {
+	 * 
+	 * multipartRequest.setCharacterEncoding("utf-8");
+	 * 
+	 * //글 정보를 저장하기 위한 articleMap //글쓰기창에 입력된 모든 정보를 kye/value로 끝날때까지 저장을 반복함.
+	 * Map<String,Object> articleMap = new HashMap<String, Object>(); Enumeration
+	 * enu=multipartRequest.getParameterNames(); while(enu.hasMoreElements()){
+	 * String name=(String)enu.nextElement(); String
+	 * value=multipartRequest.getParameter(name); articleMap.put(name,value); }
+	 * 
+	 * //파일이름과 세션에 저장된 id를 가져다 articleMap에 저장. String imageFileName=
+	 * upload(multipartRequest); HttpSession session =
+	 * multipartRequest.getSession(); MemberVO memberVO = (MemberVO)
+	 * session.getAttribute("member"); String id = memberVO.getId();
+	 * articleMap.put("parentNO", 0); articleMap.put("id", id);
+	 * articleMap.put("imageFileName", imageFileName);
+	 * 
+	 * 
+	 * String message; //ResponseEntity //클라이언트에게 적절한 응답을 제공하고, 제너릭타입이기에 유연한 반환타입을
+	 * 가졌다. //예를 들어 ResponseEntity.notFound().build()는 404를 반환하며 본문데이터를 가지지않음
+	 * ResponseEntity resEnt=null; HttpHeaders responseHeaders = new HttpHeaders();
+	 * responseHeaders.add("Content-Type", "text/html; charset=utf-8"); try { //저장한
+	 * 글쓰기 정보를 db에 추가 int articleNO = boardService.addNewArticle(articleMap); //만약
+	 * 파일이 있을경우 임시 폴더 temp폴더에서 articleNO로 명명한 파이려 경로로 옮긴다. if(imageFileName!=null &&
+	 * imageFileName.length()!=0) { File srcFile = new
+	 * File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName); File destDir = new
+	 * File(ARTICLE_IMAGE_REPO+"\\"+articleNO);
+	 * FileUtils.moveFileToDirectory(srcFile, destDir,true); }
+	 * 
+	 * //완료후 추가됨을 안내함. message = "<script>"; message += " alert('새글을 추가했습니다.');";
+	 * message += " location.href='"+multipartRequest.getContextPath()
+	 * +"/board/listArticles.do'; "; message +=" </script>";
+	 * 
+	 * resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
+	 * }catch(Exception e) { //오류발생시 임시파일 temp파일안의 해당 imageFileName파일을 삭제하고 File
+	 * srcFile = new File(ARTICLE_IMAGE_REPO+"\\"+"temp"+"\\"+imageFileName);
+	 * srcFile.delete();
+	 * 
+	 * //안내함. message = " <script>"; message
+	 * +=" alert('오류가 발생했습니다. 다시 시도해 주세요');');"; message
+	 * +=" location.href='"+multipartRequest.getContextPath()
+	 * +"/board/articleForm.do'; "; message +=" </script>";
+	 * 
+	 * resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
+	 * e.printStackTrace(); } return resEnt; }
+	 */
+
+	// 다중 addNewArticle
+	@Override
+	@RequestMapping(value = "/board/addNewArticle.do", method = RequestMethod.POST)
+	@ResponseBody
+	public ResponseEntity addNewArticle(MultipartHttpServletRequest multipartRequest, HttpServletResponse response)
+			throws Exception {
+		multipartRequest.setCharacterEncoding("utf-8");
+		String imageFileName = null;
+		Map articleMap = new HashMap();
+		Enumeration enu = multipartRequest.getParameterNames();
+
+		while (enu.hasMoreElements()) {
+			String name = (String) enu.nextElement();
+			String value = multipartRequest.getParameter(name);
+			System.out.println("multipartRequest에서 가져온 이름/해당값: " + name + ", " + value);
+			articleMap.put(name, value);
+			System.out.println("articleMap, 글을 저장하는 키벨류형태 데이터맵에 put했다.");
+		}
+
+		// 로그인 시 세션에 저장된 회원 정보에서 글쓴이 아이디를 얻어와서 Map에 저장합니다.
+		HttpSession session = multipartRequest.getSession();
+		MemberVO memberVO = (MemberVO) session.getAttribute("member");
+		String id = memberVO.getId();
+		articleMap.put("id", id);
+
+		List<String> fileList = upload(multipartRequest);
+		List<ImageVO> imageFileList = new ArrayList<ImageVO>();
+		if (fileList != null && fileList.size() != 0) {
+			for (String fileName : fileList) {
+				ImageVO imageVO = new ImageVO();
+				imageVO.setImageFileName(fileName);
+				imageFileList.add(imageVO);
+			}
+			articleMap.put("imageFileList", imageFileList);
+		}
+
+		String message;
+		ResponseEntity resEnt = null;
+		HttpHeaders responseHeaders = new HttpHeaders();
+		responseHeaders.add("Content-Type", "text/html; charset=utf-8");
+		try {
+			int articleNO = boardService.addNewArticle(articleMap);
+			if (imageFileList != null && imageFileList.size() != 0) {
+				for (ImageVO imageVO : imageFileList) {
+					imageFileName = imageVO.getImageFileName();
+					File srcFile = new File(ARTICLE_IMAGE_REPO + "\\" + "temp" + "\\" + imageFileName);
+					File destDir = new File(ARTICLE_IMAGE_REPO + "\\" + articleNO);
+					// destDir.mkdirs();
+					FileUtils.moveFileToDirectory(srcFile, destDir, true);
+				}
+			}
+			message = "<script>";
+			message += " alert('새글을 추가했습니다.');";
+			message += " location.href='" + multipartRequest.getContextPath() + "/board/listArticles.do'; ";
+			message += " </script>";
+			resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
+
+		} catch (Exception e) {
+			if (imageFileList != null && imageFileList.size() != 0) {
+				for (ImageVO imageVO : imageFileList) {
+					imageFileName = imageVO.getImageFileName();
+					File srcFile = new File(ARTICLE_IMAGE_REPO + "\\" + "temp" + "\\" + imageFileName);
+					srcFile.delete();
+				}
+			}
+
+			message = " <script>";
+			message += " alert('오류가 발생했습니다. 다시 시도해 주세요');');";
+			message += " location.href='" + multipartRequest.getContextPath() + "/board/articleForm.do'; ";
+			message += " </script>";
+			resEnt = new ResponseEntity(message, responseHeaders, HttpStatus.CREATED);
+			e.printStackTrace();
+		}
+		return resEnt;
+	}
+
+	// =============================================================================================
+	// 한개 upload는 String imageFileName= null;로 초기화하여 imageFileName을 리턴했으나,
+	// 다중 upload는 List<String> fileList = new ArrayList<String>(); 배열을 만들어 fileList
+	// 리스트로 리턴함.
+
+	// 한개 upload
+	/*
+	 * private String upload(MultipartHttpServletRequest multipartRequest) throws
+	 * Exception{ String imageFileName= null; Iterator<String> fileNames =
+	 * multipartRequest.getFileNames(); while(fileNames.hasNext()){ String fileName
+	 * = fileNames.next(); MultipartFile mFile = multipartRequest.getFile(fileName);
+	 * imageFileName=mFile.getOriginalFilename(); File file = new
+	 * File(ARTICLE_IMAGE_REPO +"\\"+ fileName);
+	 * 
+	 * if(mFile.getSize()!=0){ //File Null Check if(! file.exists()){ //경로상에 파일이
+	 * 존재하지 않을 경우 if(file.getParentFile().mkdirs()){ //경로에 해당하는 디렉토리들을 생성
+	 * file.createNewFile(); //이후 파일 생성 } } mFile.transferTo(new
+	 * File(ARTICLE_IMAGE_REPO +"\\"+"temp"+ "\\"+imageFileName)); //임시로 저장된
+	 * multipartFile을 실제 파일로 전송 } } return imageFileName; }
+	 */
+
+	// 다중 upload
+	private List<String> upload(MultipartHttpServletRequest multipartRequest) throws Exception {
+		List<String> fileList = new ArrayList<String>();
 		Iterator<String> fileNames = multipartRequest.getFileNames();
-		while(fileNames.hasNext()){
+		while (fileNames.hasNext()) {
 			String fileName = fileNames.next();
 			MultipartFile mFile = multipartRequest.getFile(fileName);
-			String originalFileName=mFile.getOriginalFilename();
+			String originalFileName = mFile.getOriginalFilename();
 			fileList.add(originalFileName);
-			File file = new File(ARTICLE_IMAGE_REPO +"\\"+ fileName);
-			if(mFile.getSize()!=0){ //File Null Check
-				if(! file.exists()){ //경로상에 파일이 존재하지 않을 경우
-					if(file.getParentFile().mkdirs()){ //경로에 해당하는 디렉토리들을 생성
-							file.createNewFile(); //이후 파일 생성
+			File file = new File(ARTICLE_IMAGE_REPO + "\\" + fileName);
+			if (mFile.getSize() != 0) { // File Null Check
+				if (!file.exists()) { // 경로상에 파일이 존재하지 않을 경우
+					if (file.getParentFile().mkdirs()) { // 경로에 해당하는 디렉토리들을 생성
+						file.createNewFile(); // 이후 파일 생성
 					}
 				}
-				mFile.transferTo(new File(ARTICLE_IMAGE_REPO +"\\"+"temp"+ "\\"+originalFileName)); //임시로 저장된 multipartFile을 실제 파일로 전송
+				mFile.transferTo(new File(ARTICLE_IMAGE_REPO + "\\" + "temp" + "\\" + originalFileName)); // 임시로 저장된
+																											// multipartFile을
+																											// 실제 파일로 전송
 			}
 		}
 		return fileList;
 	}
-	*/
+
 }

@@ -33,12 +33,12 @@ public class BoardDAOImpl implements BoardDAO {
 		return articleNO;
 	}
     
-	//다중 파일 업로드
-	/*
+	//다중 insertNewImage
 	@Override
 	public void insertNewImage(Map articleMap) throws DataAccessException {
 		List<ImageVO> imageFileList = (ArrayList)articleMap.get("imageFileList");
 		int articleNO = (Integer)articleMap.get("articleNO");
+		//selectNewImageFileNO 파일이 없으면 0, 있으면 최댓값을 가져오는  sql문
 		int imageFileNO = selectNewImageFileNO();
 		for(ImageVO imageVO : imageFileList){
 			imageVO.setImageFileNO(++imageFileNO);
@@ -46,8 +46,8 @@ public class BoardDAOImpl implements BoardDAO {
 		}
 		sqlSession.insert("mapper.board.insertNewImage",imageFileList);
 	}
-	
-   */
+
+   
 	
 	@Override
 	public ArticleVO selectArticle(int articleNO) throws DataAccessException {
