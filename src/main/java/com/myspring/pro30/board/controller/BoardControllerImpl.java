@@ -161,6 +161,7 @@ public class BoardControllerImpl  implements BoardController{
   @ResponseBody
   public ResponseEntity modArticle(MultipartHttpServletRequest multipartRequest,  
     HttpServletResponse response) throws Exception{
+	  
     multipartRequest.setCharacterEncoding("utf-8");
 	Map<String,Object> articleMap = new HashMap<String, Object>();
 	Enumeration enu=multipartRequest.getParameterNames();
@@ -178,6 +179,7 @@ public class BoardControllerImpl  implements BoardController{
 	ResponseEntity resEnt=null;
 	HttpHeaders responseHeaders = new HttpHeaders();
 	responseHeaders.add("Content-Type", "text/html; charset=utf-8");
+	
     try {
        boardService.modArticle(articleMap);
        if(imageFileName!=null && imageFileName.length()!=0) {
@@ -185,6 +187,7 @@ public class BoardControllerImpl  implements BoardController{
          File destDir = new File(ARTICLE_IMAGE_REPO+"\\"+articleNO);
          FileUtils.moveFileToDirectory(srcFile, destDir, true);
          
+         //이전 파일은 삭제
          String originalFileName = (String)articleMap.get("originalFileName");
          File oldFile = new File(ARTICLE_IMAGE_REPO+"\\"+articleNO+"\\"+originalFileName);
          oldFile.delete();
@@ -205,6 +208,9 @@ public class BoardControllerImpl  implements BoardController{
     }
     return resEnt;
   }
+  
+  
+  
   
   @Override
   @RequestMapping(value="/board/removeArticle.do" ,method = RequestMethod.POST)

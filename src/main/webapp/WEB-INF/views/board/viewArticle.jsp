@@ -130,7 +130,6 @@
 		</c:forEach>
  </c:if>
  	 --%>
-
 			<c:choose>
 				<c:when
 					test="${not empty article.imageFileName && article.imageFileName!='null' }">
